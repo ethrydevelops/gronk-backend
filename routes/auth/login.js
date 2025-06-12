@@ -28,8 +28,8 @@ router.post('/accounts/login', async (req, res) => {
         }
 
         // success!! do session
-        const sessionToken = crypto.randomUUID();
-        const sid = crypto.randomUUID();
+        const sessionToken = crypto.randomBytes(36).toString('hex');
+        const sid = crypto.randomBytes(24).toString('hex');
 
         await database('sessions').insert({
             sid,
@@ -42,6 +42,9 @@ router.post('/accounts/login', async (req, res) => {
             session: {
                 sid,
                 token: sessionToken,
+
+                string: `${sid}.${sessionToken}`,
+
                 account: {
                     uuid: account.uuid,
                     username: account.username,
