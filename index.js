@@ -12,6 +12,7 @@ const port = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
 app.use(cors());
+app.use(express.json());
 
 logging.info("Starting server...");
 logging.log("Loading routes...");

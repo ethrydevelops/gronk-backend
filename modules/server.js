@@ -29,7 +29,7 @@ const server = (app) => {
                 cert: fs.readFileSync(certPath),
             };
             srv = createSecureServer(sslOptions, app);
-            logging.info("Protocol: 🔒 HTTPS");
+            logging.info("Using protocol: 🔒 HTTPS");
 
             proto = "https";
         } else {
@@ -37,7 +37,9 @@ const server = (app) => {
         }
     } else {
         srv = createServer(app);
-        logging.info("Protocol: HTTP" + colors.red(" *insecure*"));
+        logging.warn("Using protocol: HTTP" + colors.red(" *insecure*"));
+        logging.warn("Running without HTTPS is " + colors.bold("not") + " recommended as it exposes your users to security risks. API keys and login credentials may be leaked on public networks, etc.");
+        logging.warn("SSL certificates are free with Let's Encrypt, please consider using one.");
 
         proto = "http";
     }
