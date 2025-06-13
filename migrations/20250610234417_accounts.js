@@ -24,7 +24,7 @@ exports.up = function(knex) {
         table.string("uuid").primary();
 
         table.string("url").notNullable(); // url of the model, e.g., "http://localhost:11434/api/chat"
-        table.string("model").notNullable(); // model name, e.g., "gpt-3.5-turbo"
+        table.string("model").notNullable(); // model name in request, e.g., "gpt-3.5-turbo"
 
         table.string("authorization").nullable();
 
