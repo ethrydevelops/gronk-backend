@@ -8,15 +8,6 @@ router.post("/accounts/logout", authnmiddleware, async (req, res) => {
     const { sid, session_token } = req.account;
 
     try {
-        const session = await database("sessions")
-            .where({ sid, session_token })
-            .first();
-
-        if (!session) {
-            //return res.status(401).json({ error: "Invalid session" });
-            return res.status(200).json({ message: "Logged out successfully" });
-        }
-
         // logout user / delete session
         await database("sessions")
             .where({ sid, session_token })
