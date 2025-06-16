@@ -26,6 +26,10 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
         
         if (!validModel) return res.status(404).json({ error: "Model not found" });
 
+        await knex("accounts")
+            .where({ uuid: accountId })
+            .update({ last_used_model: validModel.uuid });
+
         const messageUuid = crypto.randomUUID();
 
         await knex("messages").insert({
