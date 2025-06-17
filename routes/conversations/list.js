@@ -7,6 +7,8 @@ const router = express.Router();
 router.get("/conversations/", authnmiddleware, async (req, res) => {
     const { uuid: accountId } = req.account;
 
+    // TODO: also list the AI model used, and put on frontend
+
     try {
         let conversations = await knex("chats")
             .where({ account_id: accountId })
