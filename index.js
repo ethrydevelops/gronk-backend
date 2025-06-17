@@ -4,6 +4,7 @@ const path = require('path');
 const logging = require('./modules/console');
 const cors = require('cors');
 const { server } = require('./modules/server');
+const { getSocketInstance } = require('./modules/socket_instance');
 
 require('dotenv').config();
 
@@ -46,4 +47,18 @@ loadRoutes(path.join(__dirname, "routes"));
 const srv = server(app);
 srv.listen(port, (proto) => {
     logging.success("Server started on " + srv.proto + "://localhost:" + port);
+});
+
+const io = getSocketInstance();
+if (!io) {
+    logging.error("Socket.IO instance not found. Please ensure it is initialized correctly.");
+    process.exit(1);
+}
+
+io.on('connection', (socket) => {
+    logging.info(`Socket.IO client connected: ${socket.userId}`);
+    
+    socket.on('disconnect', () => {
+        logging.info(`Socket.IO client disconnected: ${socket.userId}`);
+    });
 });
