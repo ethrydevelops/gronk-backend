@@ -39,12 +39,6 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
 
         const messageUuid = crypto.randomUUID();
 
-        await knex("messages").insert({
-            uuid: messageUuid,
-            chat_uuid: conversationId,
-            content,
-            role: 'user'
-        });
 
         const previousMessages = await knex("messages")
             .select("content", "role")
@@ -58,6 +52,15 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
             })),
             { role: "user", content }
         ];
+
+        // insert message AFTER gathering messages to avoid duplicates or missing stuff
+
+        await knex("messages").insert({
+            uuid: messageUuid,
+            chat_uuid: conversationId,
+            content,
+            role: 'user'
+        });
 
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
