@@ -145,8 +145,6 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                                         });
                                         assistantMessageCreated = true;
 
-                                        // TODO: send socket thing on both create and update
-
                                         emitToUser(accountId, 'message_created', {
                                             uuid: assistantMessageUuid,
                                             chat_uuid: conversationId,

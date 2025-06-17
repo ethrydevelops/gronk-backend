@@ -13,7 +13,7 @@ router.post("/conversations/", authnmiddleware, async (req, res) => {
 
         await knex("chats").insert({
             uuid: conversationUuid,
-            title: "New Chat", // TODO: rename route using an LLM too
+            title: "New Chat",
             account_id: accountId
         });
 
