@@ -3,8 +3,15 @@ const knex = require("../../modules/database");
 const authnmiddleware = require("../../modules/authentication_middleware");
 const crypto = require("crypto");
 const router = express.Router();
+const { getSocketInstance, emitToUser } = require('../../modules/socket_instance');
 
 router.post("/conversations/:conversationId/messages/", authnmiddleware, async (req, res) => {
+    const io = getSocketInstance();
+    if(!io) {
+        console.error("Socket.io instance not found");
+        return res.status(500).json({ error: "IO / internal server error" });
+    }
+
     const { uuid: accountId } = req.account;
     const { conversationId } = req.params;
     const { content, model } = req.body;
@@ -136,11 +143,27 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                                         assistantMessageCreated = true;
 
                                         // TODO: send socket thing on both create and update
+
+                                        emitToUser(accountId, 'message_created', {
+                                            uuid: assistantMessageUuid,
+                                            chat_uuid: conversationId,
+                                            content: assistantResponse,
+                                            role: 'assistant',
+                                            completed: false
+                                        });
                                     } else {
                                         // update existing assistant message
                                         await knex("messages")
                                             .where({ uuid: assistantMessageUuid })
                                             .update({ content: assistantResponse });
+
+                                        emitToUser(accountId, 'message_updated', {
+                                            uuid: assistantMessageUuid,
+                                            chat_uuid: conversationId,
+                                            content: assistantResponse,
+                                            role: 'assistant',
+                                            completed: false
+                                        });
                                     }
                                 } catch (dbError) {
                                     console.error('Error updating database during streaming:', dbError);
@@ -167,11 +190,31 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                         content: assistantResponse,
                         role: 'assistant'
                     });
+
+                    emitToUser(accountId, 'message_created', {
+                        uuid: assistantMessageUuid,
+                        chat_uuid: conversationId,
+                        content: assistantResponse,
+                        role: 'assistant',
+                        completed: true
+                    });
                 } else {
                     await knex("messages")
                         .where({ uuid: assistantMessageUuid })
                         .update({ content: assistantResponse, completed: true });
+
+                    emitToUser(accountId, 'message_updated', {
+                        uuid: assistantMessageUuid,
+                        chat_uuid: conversationId,
+                        content: assistantResponse,
+                        role: 'assistant',
+                        completed: true
+                    });
                 }
+
+                emitToUser(accountId, 'message_completed', {
+                    uuid: assistantMessageUuid
+                });
             } catch (dbError) {
                 console.error('Error with final database update:', dbError);
             }
