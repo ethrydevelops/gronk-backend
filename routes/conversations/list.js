@@ -23,7 +23,7 @@ router.get("/conversations/", authnmiddleware, async (req, res) => {
 
         messages.forEach(message => {
             if (!conversationMap.has(message.chat_uuid)) {
-                conversationMap.set(message.chat_uuid, message.created_at);
+                conversationMap.set(message.chat_uuid, message.updated_at || message.created_at);
             }
         });
 
