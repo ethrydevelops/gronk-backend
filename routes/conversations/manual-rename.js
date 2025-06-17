@@ -1,11 +1,17 @@
 const express = require("express");
 const knex = require("../../modules/database");
 const authnmiddleware = require("../../modules/authentication_middleware");
-const crypto = require("crypto");
+const { getSocketInstance, emitToUser } = require("../../modules/socket_instance");
 
 const router = express.Router();
 
 router.post("/conversations/:uuid/rename", authnmiddleware, async (req, res) => {
+    const io = getSocketInstance();
+    if (!io) {
+        console.error("Socket instance not available");
+        return res.status(500).json({ error: "Socket instance not available" });
+    }
+
     const { uuid: conversationUuid } = req.params;
     const { uuid: accountId } = req.account;
 
@@ -27,6 +33,9 @@ router.post("/conversations/:uuid/rename", authnmiddleware, async (req, res) => 
         await knex("chats")
             .where({ uuid: conversationUuid })
             .update({ title });
+
+        // send socket event to update conversation title in real-time
+        emitToUser(req.account.uuid, "nav_chats_updated", conversationUuid);
 
         return res.status(200).json({
             message: "Conversation renamed successfully",

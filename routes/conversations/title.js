@@ -1,10 +1,17 @@
 const express = require("express");
 const knex = require("../../modules/database");
 const authnmiddleware = require("../../modules/authentication_middleware");
+const { getSocketInstance, emitToUser } = require('../../modules/socket_instance');
 
 const router = express.Router();
 
 router.post("/conversations/:uuid/generate-title", authnmiddleware, async (req, res) => {
+    const io = getSocketInstance();
+    if(!io) {
+        console.error("Socket.io instance not found");
+        return res.status(500).json({ error: "IO / internal server error" });
+    }
+
     const { uuid: conversationUuid } = req.params;
 
     try {
@@ -84,6 +91,17 @@ Title:`
         }
 
         cleanResp = response.message?.content?.toString().replaceAll("\"", "").replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+        // set chat title in db
+        await knex("chats")
+            .where({ uuid: conversationUuid, account_id: req.account.uuid })
+            .update({ title: cleanResp || "Untitled Chat" })
+            .catch(err => {
+                console.error("Error updating conversation title:", err);
+            });
+        
+        // send socket event to update conversation title in real-time
+        emitToUser(req.account.uuid, "nav_chats_updated", conversationUuid);
 
         res.status(200).json({
             message: "Title generated successfully",
