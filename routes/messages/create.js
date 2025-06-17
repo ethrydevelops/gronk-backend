@@ -141,7 +141,8 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                                             chat_uuid: conversationId,
                                             content: assistantResponse,
                                             role: 'assistant',
-                                            completed: false
+                                            completed: false,
+                                            model_uuid: validModel.uuid
                                         });
                                         assistantMessageCreated = true;
 
@@ -150,7 +151,8 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                                             chat_uuid: conversationId,
                                             content: assistantResponse,
                                             role: 'assistant',
-                                            completed: false
+                                            completed: false,
+                                            model_uuid: validModel.uuid
                                         });
                                     } else {
                                         // update existing assistant message
@@ -163,7 +165,8 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                                             chat_uuid: conversationId,
                                             content: assistantResponse,
                                             role: 'assistant',
-                                            completed: false
+                                            completed: false,
+                                            model_uuid: validModel.uuid
                                         });
                                     }
                                 } catch (dbError) {
@@ -189,7 +192,8 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                         uuid: assistantMessageUuid,
                         chat_uuid: conversationId,
                         content: assistantResponse,
-                        role: 'assistant'
+                        role: 'assistant',
+                        model_uuid: validModel.uuid
                     });
 
                     emitToUser(accountId, 'message_created', {
@@ -197,7 +201,8 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                         chat_uuid: conversationId,
                         content: assistantResponse,
                         role: 'assistant',
-                        completed: true
+                        completed: true,
+                        model_uuid: validModel.uuid
                     });
                 } else {
                     await knex("messages")
@@ -209,7 +214,8 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                         chat_uuid: conversationId,
                         content: assistantResponse,
                         role: 'assistant',
-                        completed: true
+                        completed: true,
+                        model_uuid: validModel.uuid
                     });
                 }
 
