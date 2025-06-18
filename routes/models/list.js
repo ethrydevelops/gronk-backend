@@ -12,14 +12,20 @@ router.get("/models/", authnmiddleware, async (req, res) => {
             .where({ account_id: accountId })
             .select("uuid", "name", "model", "url", "authorization");
 
+        // get last used and title model
         const userLastUsedModel = await knex("accounts")
             .where({ uuid: accountId })
-            .select("last_used_model")
+            .select("last_used_model", "title_model")
             .first();
 
         let lastUsedModel = null;
         if (userLastUsedModel) {
             lastUsedModel = models.find(model => model.uuid === userLastUsedModel.last_used_model);
+        }
+
+        let titleModel = null;
+        if (userLastUsedModel) {
+            titleModel = models.find(model => model.uuid === userLastUsedModel.title_model);
         }
 
         // get amount of messages sent by each model
@@ -37,6 +43,7 @@ router.get("/models/", authnmiddleware, async (req, res) => {
         return res.status(200).json({
             count: models.length,
             last_used_model: lastUsedModel ? lastUsedModel : null,
+            titles: titleModel ? titleModel : null,
             models
         });
     } catch (error) {
