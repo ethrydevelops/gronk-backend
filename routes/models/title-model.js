@@ -8,17 +8,20 @@ router.post("/models/title", authnmiddleware, async (req, res) => {
     const { uuid: accountId } = req.account;
     const { modelUuid } = req.body;
 
-    if (!modelUuid) {
+    if (!modelUuid && modelUuid != null) {
         return res.status(400).json({ error: "Model UUID is required" });
     }
 
     try {
-        const model = await knex("models")
-            .where({ uuid: modelUuid, account_id: accountId })
-            .first();
+        let model = {};
+        if(modelUuid != null) {
+            model = await knex("models")
+                .where({ uuid: modelUuid, account_id: accountId })
+                .first();
 
-        if (!model) {
-            return res.status(404).json({ error: "Model not found" });
+            if (!model) {
+                return res.status(404).json({ error: "Model not found" });
+            }
         }
 
         await knex("accounts")
