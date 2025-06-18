@@ -76,6 +76,7 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
         const assistantMessageUuid = crypto.randomUUID();
         let lastDbUpdate = 0;
         let assistantMessageCreated = false;
+        let isInReasoningMode = false;
 
         try {
             const response = await fetch(validModel.url, {
@@ -112,6 +113,7 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                     try {
                         let data;
                         let dataCompleted = false;
+                        
                         if(line.trim() != ": OPENROUTER PROCESSING") {
                             if (line.startsWith('data: ')) {
                                 if(line.trim() == "data: [DONE]") {
@@ -124,7 +126,6 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                             }
 
                             if (!dataCompleted) {
-
                                 const content = data.message?.content || data.choices?.[0]?.delta?.content || '';
                                 
                                 if (content) {
@@ -245,6 +246,36 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
 
         } catch (fetchError) {
             console.error("Error fetching from model API:", fetchError);
+
+            try {
+                // create error message
+                
+                await knex("messages").insert({
+                    completed: true,
+                    uuid: assistantMessageUuid,
+                    chat_uuid: conversationId,
+                    content: fetchError.message,
+                    role: 'error',
+                    model_uuid: validModel.uuid
+                });
+
+                emitToUser(accountId, 'message_created', {
+                    uuid: assistantMessageUuid,
+                    chat_uuid: conversationId,
+                    content: fetchError.message,
+                    role: 'error',
+                    completed: true,
+                    model_uuid: validModel.uuid
+                });
+
+                emitToUser(accountId, "message_error", {
+                    type: "error",
+                    chat: conversationId,
+                    data: fetchError.message
+                });
+            } catch (err2) {
+                console.error("Socket error: ", err2);
+            }
             
             res.write(`data: ${JSON.stringify({
                 type: 'error',
