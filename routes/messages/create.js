@@ -111,71 +111,80 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                     
                     try {
                         let data;
+                        let dataCompleted = false;
                         if (line.startsWith('data: ')) {
-                            data = JSON.parse(line.slice(6));
+                            if(line.trim() == "data: [DONE]") {
+                                dataCompleted = true;
+                            } else {
+                                data = JSON.parse(line.slice(6));
+                            }
                         } else {
                             data = JSON.parse(line);
                         }
 
-                        const content = data.message?.content || data.choices?.[0]?.delta?.content || '';
-                        
-                        if (content) {
-                            assistantResponse += content;
+                        if (!dataCompleted) {
+
+                            const content = data.message?.content || data.choices?.[0]?.delta?.content || '';
                             
-                            res.write(`data: ${JSON.stringify({
-                                type: 'chunk',
-                                content: content,
-                                messageId: messageUuid
-                            })}\n\n`);
-
-                            // update database+sockets at most once per second to avoid overwhelming db or clients
-                            const now = Date.now();
-                            if (now - lastDbUpdate >= 1000) {
-                                lastDbUpdate = now;
+                            if (content) {
+                                assistantResponse += content;
                                 
-                                try {
-                                    if (!assistantMessageCreated) {
-                                        // create the assistant message record
-                                        await knex("messages").insert({
-                                            uuid: assistantMessageUuid,
-                                            chat_uuid: conversationId,
-                                            content: assistantResponse,
-                                            role: 'assistant',
-                                            completed: false,
-                                            model_uuid: validModel.uuid
-                                        });
-                                        assistantMessageCreated = true;
+                                res.write(`data: ${JSON.stringify({
+                                    type: 'chunk',
+                                    content: content,
+                                    messageId: messageUuid
+                                })}\n\n`);
 
-                                        emitToUser(accountId, 'message_created', {
-                                            uuid: assistantMessageUuid,
-                                            chat_uuid: conversationId,
-                                            content: assistantResponse,
-                                            role: 'assistant',
-                                            completed: false,
-                                            model_uuid: validModel.uuid
-                                        });
-                                    } else {
-                                        // update existing assistant message
-                                        await knex("messages")
-                                            .where({ uuid: assistantMessageUuid })
-                                            .update({ content: assistantResponse });
+                                // update database+sockets at most once per second to avoid overwhelming db or clients
+                                const now = Date.now();
+                                if (now - lastDbUpdate >= 1000) {
+                                    lastDbUpdate = now;
+                                    
+                                    try {
+                                        if (!assistantMessageCreated) {
+                                            // create the assistant message record
+                                            await knex("messages").insert({
+                                                uuid: assistantMessageUuid,
+                                                chat_uuid: conversationId,
+                                                content: assistantResponse,
+                                                role: 'assistant',
+                                                completed: false,
+                                                model_uuid: validModel.uuid
+                                            });
+                                            assistantMessageCreated = true;
 
-                                        emitToUser(accountId, 'message_updated', {
-                                            uuid: assistantMessageUuid,
-                                            chat_uuid: conversationId,
-                                            content: assistantResponse,
-                                            role: 'assistant',
-                                            completed: false,
-                                            model_uuid: validModel.uuid
-                                        });
+                                            emitToUser(accountId, 'message_created', {
+                                                uuid: assistantMessageUuid,
+                                                chat_uuid: conversationId,
+                                                content: assistantResponse,
+                                                role: 'assistant',
+                                                completed: false,
+                                                model_uuid: validModel.uuid
+                                            });
+                                        } else {
+                                            // update existing assistant message
+                                            await knex("messages")
+                                                .where({ uuid: assistantMessageUuid })
+                                                .update({ content: assistantResponse });
+
+                                            emitToUser(accountId, 'message_updated', {
+                                                uuid: assistantMessageUuid,
+                                                chat_uuid: conversationId,
+                                                content: assistantResponse,
+                                                role: 'assistant',
+                                                completed: false,
+                                                model_uuid: validModel.uuid
+                                            });
+                                        }
+                                    } catch (dbError) {
+                                        console.error('Error updating database during streaming:', dbError);
                                     }
-                                } catch (dbError) {
-                                    console.error('Error updating database during streaming:', dbError);
                                 }
                             }
                         }
 
-                        if (data.done || data.finish_reason) {
+                        if (data.done || data.finish_reason || dataCompleted) {
+                            // finish stream
                             break;
                         }
                     } catch (parseError) {
