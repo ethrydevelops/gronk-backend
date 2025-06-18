@@ -73,6 +73,7 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
         res.write(`data: ${JSON.stringify({ type: 'connected', messageId: messageUuid })}\n\n`);
 
         let assistantResponse = '';
+        let messageContent = '';
         const assistantMessageUuid = crypto.randomUUID();
         let lastDbUpdate = 0;
         let assistantMessageCreated = false;
@@ -126,14 +127,34 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                             }
 
                             if (!dataCompleted) {
-                                const content = data.message?.content || data.choices?.[0]?.delta?.content || '';
+                                let contentToAdd = '';
                                 
-                                if (content) {
-                                    assistantResponse += content;
+                                if (data.choices?.[0]?.delta?.reasoning) {
+                                    if (!isInReasoningMode) {
+                                        contentToAdd += '<think>';
+                                        isInReasoningMode = true;
+                                    }
+                                    contentToAdd += data.choices[0].delta.reasoning;
+                                } else if (isInReasoningMode && data.choices?.[0]?.delta?.content) {
+                                    // Reasoning has ended, close the think tag and continue with regular content
+                                    contentToAdd += '</think>';
+                                    isInReasoningMode = false;
+                                    contentToAdd += data.choices[0].delta.content;
+                                } else if (data.choices?.[0]?.delta?.content) {
+                                    contentToAdd += data.choices[0].delta.content;
+                                } else {
+                                    // Fallback to original content extraction
+                                    const content = data.message?.content || '';
+                                    contentToAdd = content;
+                                }
+                                
+                                if (contentToAdd) {
+                                    messageContent += contentToAdd;
+                                    assistantResponse = messageContent;
                                     
                                     res.write(`data: ${JSON.stringify({
                                         type: 'chunk',
-                                        content: content,
+                                        content: contentToAdd,
                                         messageId: messageUuid
                                     })}\n\n`);
 
@@ -196,6 +217,12 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
                 }
             }
 
+            // Close reasoning tag if still open at the end
+            if (isInReasoningMode) {
+                messageContent += '</think>';
+                assistantResponse = messageContent;
+            }
+
             // final db update to ensure we have the complete response
             try {
                 if (!assistantMessageCreated) {
@@ -248,7 +275,7 @@ router.post("/conversations/:conversationId/messages/", authnmiddleware, async (
             console.error("Error fetching from model API:", fetchError);
 
             try {
-                // create error message
+                // create errir message
                 
                 await knex("messages").insert({
                     completed: true,
