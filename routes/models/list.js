@@ -22,6 +22,18 @@ router.get("/models/", authnmiddleware, async (req, res) => {
             lastUsedModel = models.find(model => model.uuid === userLastUsedModel.last_used_model);
         }
 
+        // get amount of messages sent by each model
+        const messages = await knex("messages")
+            .select("model_uuid")
+            .whereIn("model_uuid", models.map(model => model.uuid))
+            .count("uuid as count")
+            .groupBy("model_uuid");
+
+        models.forEach(model => {
+            const usage = messages.find(msg => msg.model_uuid === model.uuid);
+            model.usage_count = usage ? usage.count : 0;
+        });
+
         return res.status(200).json({
             count: models.length,
             last_used_model: lastUsedModel ? lastUsedModel : null,
