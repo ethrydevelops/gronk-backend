@@ -5,6 +5,8 @@ const authnmiddleware = require("../../modules/authentication_middleware");
 const router = express.Router();
 
 router.post("/models/title", authnmiddleware, async (req, res) => {
+    // TODO: maybe make it more RESTful by using DELETE for removing the title model and PUT for updates?
+
     const { uuid: accountId } = req.account;
     const { modelUuid } = req.body;
 
